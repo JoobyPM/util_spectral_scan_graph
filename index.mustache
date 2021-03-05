@@ -64,13 +64,12 @@
                 let curPoints = 1*arr[i+1];
                 let rssi = c*1;
                 if(curPoints>0){
-                    //t.push(rssi+"-"+(Math.round(10000*curPoints/points)/100)+"%");
-                    t.push(rssi*(curPoints/points));
+                    t.push(rssi*curPoints);
                 }
             }
             return t;
         },[]);
-        let rssi = arr.reduce((t,c)=>t+c,0);
+        let rssi = arr.reduce((t,c)=>t+c,0)/points;
         bws.push(Math.round(bw*100/1000000)/100);
         rssis.push(rssi);
         return {bw:bw/1000,rssi:rssi};
