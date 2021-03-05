@@ -1,0 +1,177 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>LoRa Spectral Scan Chart</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.bundle.min.js" integrity="sha512-SuxO9djzjML6b9w9/I07IWnLnQhgyYVSpHZx0JV97kGBfTIsUYlWflyuW4ypnvhBrslz1yJ3R+S14fdCWmSmSA==" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.css" integrity="sha512-/zs32ZEJh+/EO2N1b0PEdoA10JkdC3zJ8L5FTiQu82LR9S/rOQNfQN7U59U9BC12swNeRAz3HSzIL2vpp4fv3w==" crossorigin="anonymous" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BmbxuPwQa2lc/FVzBcNJ7UAyJxM6wuqIj61tLrc4wSX0szH/Ev+nYRRuWlolflfl" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/js/bootstrap.bundle.min.js" integrity="sha384-b5kHyXgcpbZJO/tY9Ul7kGkf1S0CWuKcCD38l8YkeH8z8QjE0GmW1gYU5S9FOnJ0" crossorigin="anonymous"></script>
+
+    <script>
+        window.chartColors = {
+            red: 'rgb(255, 99, 132)',
+            orange: 'rgb(255, 159, 64)',
+            yellow: 'rgb(255, 205, 86)',
+            green: 'rgb(75, 192, 192)',
+            blue: 'rgb(54, 162, 235)',
+            purple: 'rgb(153, 102, 255)',
+            grey: 'rgb(201, 203, 207)'
+        };
+
+    </script>
+    <style>
+        canvas{
+            -moz-user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+        }
+        .links{
+            padding: 1.5rem;
+            margin-right: 0;
+            margin-left: 0;
+            border-width: .2rem;
+        }
+        .links a.btn{
+            margin: 5px;
+        }
+    </style>
+</head>
+
+<body>
+<div style="width:75%;">
+    <div class="links">
+        {{links}}
+    </div>
+    <canvas id="canvas"></canvas>
+</div>
+<script>
+
+    try{
+        window.chartData = {{data}};
+    }catch (e){
+        console.warn("No data from Server",e);
+    }
+    let bws = [];
+    let rssis = [];
+    let present = {};
+    chartData.map(r=>{
+        let arr = Array.from(r)
+        let bw = arr.shift();
+        let points = arr.reduce((t,c,i)=>{t=i%2!==0?t+c*1:t;return t;},0);
+        arr = arr.reduce((t,c,i)=>{
+            if(i%2===0){
+                let curPoints = 1*arr[i+1];
+                let rssi = c*1;
+                if(curPoints>0){
+                    //t.push(rssi+"-"+(Math.round(10000*curPoints/points)/100)+"%");
+                    t.push(rssi*(curPoints/points));
+                }
+            }
+            return t;
+        },[]);
+        let rssi = arr.reduce((t,c)=>t+c,0);
+        bws.push(Math.round(bw*100/1000000)/100);
+        rssis.push(rssi);
+        return {bw:bw/1000,rssi:rssi};
+    });
+
+
+    let data = {
+        label: 'RSSI chart {{fileName}}',
+        fill: false,
+        backgroundColor: window.chartColors.blue,
+        borderColor: window.chartColors.blue,
+        data: rssis,
+        lineTension:0,
+        pointStyle:'circle',
+        radius:2
+    };
+
+    let channels = bws.map(bw=>{
+        let LORA_CHANNELS = [868.1,868.3,868.5,869.525];
+        if(LORA_CHANNELS.map(ch=>bw>=ch&&bw<=(ch+0.125)).reduce((t,c)=>t||c,false)){
+            return -130;
+        }else{
+            return 0;
+        }
+    });
+
+    let qualityLevels = {
+        "Input noise floor":bws.map((bw,i)=>i===0||i===bws.length-1?-120:undefined),
+        "Wrong":bws.map((bw,i)=>i===0||i===bws.length-1?-114:undefined),
+        "Excellent":bws.map((bw,i)=>i===0||i===bws.length-1?-105:undefined),
+        "Very good":bws.map((bw,i)=>i===0||i===bws.length-1?-95:undefined),
+        "Good":bws.map((bw,i)=>i===0||i===bws.length-1?-90:undefined)
+    }
+
+    let loraChanel = {
+        label: 'Lora channels',
+        fill: false,
+        backgroundColor: window.chartColors.red,
+        borderColor: window.chartColors.red,
+        data: channels,
+        lineTension:0
+    };
+
+    let datasets = [data,loraChanel];
+
+    Object.keys(qualityLevels).map(l=>datasets.push({
+        label: l,
+        fill: false,
+        backgroundColor: window.chartColors.green,
+        borderColor: window.chartColors.green,
+        data: qualityLevels[l],
+        lineTension:0,
+        spanGaps:true
+    }));
+
+    let config = {
+        type: 'line',
+        data: {
+            labels: bws.map(b=>b+"MHz"),
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Chart.js Line Chart'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                }
+            },
+            hover: {
+                mode: 'nearest',
+                intersect: true
+            },
+            scales: {
+                x: {
+                    display: true,
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Band'
+                    }
+                },
+                y: {
+                    display: true,
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'RSSI'
+                    }
+                }
+            }
+        }
+    };
+
+    window.onload = function() {
+        let ctx = document.getElementById('canvas').getContext('2d');
+        window.myLine = new Chart(ctx, config);
+    };
+</script>
+</body>
+
+</html>

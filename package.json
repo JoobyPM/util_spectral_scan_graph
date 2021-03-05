@@ -1,0 +1,12 @@
+{
+  "name": "util_spectral_scan_graph",
+  "version": "1.0.0",
+  "description": "Visualisation tool for LoRa spectral scan CSV log that made by «util_spectral_scan»",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["util_spectral_scan"],
+  "author": "Pavel Marakhovskyi",
+  "license": "ISC"
+}
